@@ -120,16 +120,6 @@ impl Bucket {
         let date = time::now_utc().rfc822().to_string();
         let mut canonical_headers = String::new();
         let token = creds.token().as_ref().map(|s| s.as_str());
-        // Keep the list of header values sorted!
-        for (header, maybe_value) in vec![
-            ("x-amz-security-token", token),
-            ] {
-            if let Some(ref value) = maybe_value {
-                request.headers_mut()
-                       .set_raw(header, vec!(value.as_bytes().to_vec()));
-                canonical_headers.push_str(format!("{}:{}\n", header.to_ascii_lowercase(), value).as_ref());
-            }
-        }
         let auth = self.auth("PUT", &date, key, "", &canonical_headers, content_type, creds);
         request.headers_mut().set_raw("Date", vec!(date.into_bytes()));
         request.headers_mut().set(header::ContentType(content_type.parse().unwrap()));
@@ -138,7 +128,6 @@ impl Bucket {
             // Two weeks
             header::CacheDirective::MaxAge(1296000)
         ]));
-        request.headers_mut().set_raw("Authorization", vec!(auth.into_bytes()));
         request.set_body(content);
 
         Box::new(self.client.request(request).then(|result| {
